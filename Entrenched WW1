@@ -1,0 +1,248 @@
+-- =================================================================
+-- XSTAR ENTRENCHED WW1 (Hard Lock & Instant Prediction)
+-- =================================================================
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "XSTAR ENTRENCHED WW1",
+   LoadingTitle = "XSTAR Motion Engine",
+   LoadingSubtitle = "by Zukan",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "XStarData",
+      FileName = "Config"
+   },
+   KeySystem = false
+})
+
+-- BAĞLAMLAR VE DEĞİŞKENLER
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local Toggles = {
+    Aimbot = true,
+    TeamCheck = true,
+    Prediction = true,
+    WallCheck = true,
+    Esp = true,
+    FovVisible = true,
+    StickyAim = true -- Hedef ölene kadar bırakmaz
+}
+
+local Values = {
+    PredictionHizi = 0.165, -- Entrenched mesafeleri için idealdir
+    Smoothing = 0.05,        -- 0.05 = Tak diye kitlenir (Neredeyse Anında)
+    FovRadius = 180,
+    HedefKemik = "Head",
+    AimbotTusu = Enum.UserInputType.MouseButton2,
+    EspColor = Color3.fromRGB(255, 0, 0)
+}
+
+local Kilitli = false
+local MevcutHedef = nil
+
+-- FOV ÇEMBERİ
+local FovCircle = Drawing.new("Circle")
+FovCircle.Visible = Toggles.FovVisible
+FovCircle.Radius = Values.FovRadius
+FovCircle.Color = Color3.fromRGB(255, 255, 255)
+FovCircle.Thickness = 1
+FovCircle.Transparency = 0.7
+
+-- ==========================================
+-- GELİŞMİŞ HEDEF BULUCU (STICKY LOGIC)
+-- ==========================================
+
+local function IsValid(part)
+    if not part or not part.Parent then return false end
+    local char = part.Parent
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    if Toggles.TeamCheck and Players:GetPlayerFromCharacter(char) and Players:GetPlayerFromCharacter(char).Team == LocalPlayer.Team then return false end
+    
+    if Toggles.WallCheck then
+        local RayParams = RaycastParams.new()
+        RayParams.FilterType = Enum.RaycastFilterType.Exclude
+        RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+        local Result = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, RayParams)
+        if Result and not Result.Instance:IsDescendantOf(char) then return false end
+    end
+    
+    return true
+end
+
+local function GetClosestTarget()
+    -- Eğer yapışkan mod açıksa ve mevcut bir hedefimiz varsa, onu bırakma
+    if Toggles.StickyAim and MevcutHedef and IsValid(MevcutHedef) then
+        local ScreenPos, OnScreen = Camera:WorldToViewportPoint(MevcutHedef.Position)
+        if OnScreen then return MevcutHedef end
+    end
+
+    local MaxDist = Values.FovRadius
+    local Target = nil
+    local MousePos = UserInputService:GetMouseLocation()
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            if Toggles.TeamCheck and player.Team == LocalPlayer.Team then continue end
+            local TargetPart = player.Character:FindFirstChild(Values.HedefKemik)
+            if TargetPart and IsValid(TargetPart) then
+                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+                if OnScreen then
+                    local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
+                    if Distance < MaxDist then
+                        MaxDist = Distance
+                        Target = TargetPart
+                    end
+                end
+            end
+        end
+    end
+    return Target
+end
+
+-- ==========================================
+-- ARAYÜZ (XSTAR TABS)
+-- ==========================================
+
+local MainTab = Window:CreateTab("Aimbot (Rage)", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+
+MainTab:CreateToggle({
+   Name = "Master Aimbot",
+   CurrentValue = true,
+   Callback = function(Value) Toggles.Aimbot = Value end,
+})
+
+MainTab:CreateSlider({
+   Name = "Smoothing (DÜŞÜK = DAHA SERT)",
+   Range = {0, 1},
+   Increment = 0.01,
+   Suffix = "Sertlik",
+   CurrentValue = 0.05,
+   Callback = function(Value) Values.Smoothing = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Sticky Aim (Hedefe Yapış)",
+   CurrentValue = true,
+   Callback = function(Value) Toggles.StickyAim = Value end,
+})
+
+MainTab:CreateSlider({
+   Name = "Prediction (Tahmin Hızı)",
+   Range = {0.1, 0.4},
+   Increment = 0.001,
+   Suffix = "Lead",
+   CurrentValue = 0.165,
+   Callback = function(Value) Values.PredictionHizi = Value end,
+})
+
+MainTab:CreateSection("Filters")
+
+MainTab:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = true,
+   Callback = function(Value) Toggles.TeamCheck = Value end,
+})
+
+-- VISUALS
+VisualsTab:CreateToggle({
+   Name = "Enemy Red ESP",
+   CurrentValue = true,
+   Callback = function(Value) 
+       Toggles.Esp = Value 
+       if not Value then
+           for _, p in pairs(Players:GetPlayers()) do
+               if p.Character and p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+           end
+       end
+   end,
+})
+
+VisualsTab:CreateSlider({
+   Name = "FOV Size",
+   Range = {50, 800},
+   Increment = 10,
+   CurrentValue = 180,
+   Callback = function(Value) Values.FovRadius = Value end,
+})
+
+-- ==========================================
+-- ANA DÖNGÜ (ADAMIN KAFASINDAN AYRILMAZ)
+-- ==========================================
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Values.AimbotTusu then Kilitli = true end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Values.AimbotTusu then 
+        Kilitli = false 
+        MevcutHedef = nil -- Tuşu bırakınca hedefi sal
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    FovCircle.Position = UserInputService:GetMouseLocation()
+    FovCircle.Radius = Values.FovRadius
+    FovCircle.Visible = Toggles.FovVisible
+
+    if Kilitli and Toggles.Aimbot then
+        MevcutHedef = GetClosestTarget()
+        
+        if MevcutHedef then
+            local RootPart = MevcutHedef.Parent:FindFirstChild("HumanoidRootPart")
+            local PredictPos = MevcutHedef.Position
+            
+            -- HAREKETLİ HEDEF TAHMİNİ (PREDICTION)
+            if Toggles.Prediction and RootPart then
+                -- Mesafe arttıkça tahmini artıran formül (Entrenched için özel)
+                local Mesafe = (Camera.CFrame.Position - MevcutHedef.Position).Magnitude
+                local DinamikPred = Values.PredictionHizi + (Mesafe / 5000) 
+                PredictPos = PredictPos + (RootPart.Velocity * DinamikPred)
+            end
+
+            -- KİLİTLENME (LERP)
+            local LookAt = CFrame.new(Camera.CFrame.Position, PredictPos)
+            
+            -- Eğer Smoothing 0 ise tak diye kitlenir
+            if Values.Smoothing <= 0.01 then
+                Camera.CFrame = LookAt
+            else
+                Camera.CFrame = Camera.CFrame:Lerp(LookAt, 1 - Values.Smoothing)
+            end
+        end
+    end
+    
+    -- RED ESP (ONLY ENEMIES)
+    if Toggles.Esp then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                if Toggles.TeamCheck and p.Team == LocalPlayer.Team then
+                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+                    continue
+                end
+
+                local hl = p.Character:FindFirstChild("Highlight")
+                if not hl then
+                    hl = Instance.new("Highlight", p.Character)
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    hl.OutlineTransparency = 1
+                    hl.FillAlpha = 0.5
+                end
+            end
+        end
+    end
+end)
+
+Rayfield:Notify({
+   Title = "XSTAR ENTRENCHED",
+   Content = "Hard Lock & Prediction Aktif!",
+   Duration = 5,
+   Image = 4483362458,
+})
