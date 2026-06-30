@@ -1,12 +1,23 @@
 -- =================================================================
--- PANDA KEY SYSTEM V3 ENTEGRASYONU
+-- PANDA KEY SYSTEM V3 ENTEGRASYONU (GÜVENLİ VE GARANTİ SÜRÜM)
 -- =================================================================
-local PandaAuth = loadstring(game:HttpGet("https://api.pandadevelopment.net/v3/auth"))()
+-- İnternetten scripti çekip korumalı bir şekilde çalıştırmayı dener
+local PandaLink = game:HttpGet("https://api.pandadevelopment.net/v3/auth")
+local PandaAuth = loadstring(PandaLink)
+
+-- Eğer loadstring fonksiyon olarak dönmediyse alternatif linki dener
+if type(PandaAuth) ~= "function" then
+    PandaLink = game:HttpGet("https://pandadevelopment.net/v3/auth")
+    PandaAuth = loadstring(PandaLink)
+end
+
+-- Fonksiyonu çalıştırıp ana kütüphaneyi değişkene atar
+local PandaLib = PandaAuth()
 local API_KEY = "200847fe-ac38-456b-b144-1f4225158e36"
 
-if not PandaAuth:ValidateKey(API_KEY, _G.PandaKey) then
+if not PandaLib:ValidateKey(API_KEY, _G.PandaKey) then
     -- Oyuncu geçerli bir anahtara sahip değilse burası çalışır:
-    local get_key_link = PandaAuth:GetKeyLink(API_KEY)
+    local get_key_link = PandaLib:GetKeyLink(API_KEY)
     setclipboard(get_key_link) -- Reklam linkini panoya kopyalar
     
     -- Oyuncuya bildirim gönderir
@@ -181,7 +192,7 @@ VisualsTab:CreateSlider({
    Range = {50, 800},
    Increment = 10,
    CurrentValue = 180,
-   Callback = function(Value) Values.FovRadius = Value end,
+   Callback = function(Value) Values.FovRadius = Value end
 })
 
 -- ANA DÖNGÜ
