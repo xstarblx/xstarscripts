@@ -1,12 +1,13 @@
 -- =================================================================
--- XSTAR ENTRENCHED WW1 (Fixed API Key System Version)
+-- XSTAR ENTRENCHED WW1 (Premium Rayfield Style Gatekeeper)
 -- =================================================================
 
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 local API_URL = "https://api.xstar.site" -- Senin yönlendirdiğin Vercel domain adresi
 
--- 1. STEP: BACKEND ÜZERİNDEN GÜNCEL REKLAM LİNKİNİ ÇEKME VE KOPYALAMA
-local LinkvertiseLinki = "https://linkvertise.com" -- Sitenin yavaşlama ihtimaline karşı yedek link
+-- 1. STEP: BACKEND ÜZERİNDEN GÜNCEL REKLAM LİNKİNİ ÇEKME
+local LinkvertiseLinki = "https://linkvertise.com" 
 local success, response = pcall(function()
     return HttpService:JSONDecode(game:HttpGet(API_URL .. "/get-link"))
 end)
@@ -15,284 +16,329 @@ if success and response and response.link then
     LinkvertiseLinki = response.link
 end
 
--- Reklam linkini oyuncunun panosuna otomatik kopyala
+-- İlk çalıştırmada linki panoya otomatik kopyala
 if setclipboard then
     setclipboard(LinkvertiseLinki)
 end
 
--- 2. STEP: GÜVENLİ DOĞRULAMA FONKSİYONU
-local function VerifyKeyWithAPI(InputKey)
-    local checkSuccess, checkResponse = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet(API_URL .. "/check-key?key=" .. tostring(InputKey)))
-    end)
-    
-    if checkSuccess and checkResponse and checkResponse.success then
+-- 2. STEP: ANA HİLE FONKSİYONU (YALNIZCA KEY DOĞRUYSA TETİKLENECEK)
+local function LoadMainCheat()
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+    local Window = Rayfield:CreateWindow({
+       Name = "XSTAR ENTRENCHED WW1",
+       LoadingTitle = "XSTAR Motion Engine",
+       LoadingSubtitle = "by Zukan",
+       ConfigurationSaving = {
+          Enabled = true,
+          FolderName = "XStarData",
+          FileName = "Config"
+       },
+       KeySystem = false -- Harici sistem kullandığımız için kapalı kalıyor
+    })
+
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "XSTAR - Authorized!",
+        Text = "Welcome back, chief!",
+        Duration = 5
+    })
+
+    -- =================================================================
+    -- MAIN CHEAT FUNCTIONS (Orijinal Aimbot ve ESP Kodların)
+    -- =================================================================
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local Camera = workspace.CurrentCamera
+    local LocalPlayer = Players.LocalPlayer
+
+    local Toggles = {
+        Aimbot = true,
+        TeamCheck = true,
+        Prediction = true,
+        WallCheck = true,
+        Esp = true,
+        FovVisible = true,
+        StickyAim = true 
+    }
+
+    local Values = {
+        PredictionHizi = 0.165, 
+        Smoothing = 0.05,        
+        FovRadius = 180,
+        HedefKemik = "Head",
+        AimbotTusu = Enum.UserInputType.MouseButton2,
+        EspColor = Color3.fromRGB(255, 0, 0)
+    }
+
+    local Kilitli = false
+    local MevcutHedef = nil
+
+    local FovCircle = Drawing.new("Circle")
+    FovCircle.Visible = Toggles.FovVisible
+    FovCircle.Radius = Values.FovRadius
+    FovCircle.Color = Color3.fromRGB(255, 255, 255)
+    FovCircle.Thickness = 1
+    FovCircle.Transparency = 0.7
+
+    local function IsValid(part)
+        if not part or not part.Parent then return false end
+        local char = part.Parent
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then return false end
+        if Toggles.TeamCheck and Players:GetPlayerFromCharacter(char) and Players:GetPlayerFromCharacter(char).Team == LocalPlayer.Team then return false end
+        
+        if Toggles.WallCheck then
+            local RayParams = RaycastParams.new()
+            RayParams.FilterType = Enum.RaycastFilterType.Exclude
+            RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+            local Result = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, RayParams)
+            if Result and not Result.Instance:IsDescendantOf(char) then return false end
+        end
         return true
-    else
-        return false
-    end
-end
-
--- 3. STEP: RAYFIELD AND WINDOW SETUP
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
--- Hatayı önlemek için Rayfield kurallarına uygun tablo yapısı kullanıldı
-local Window = Rayfield:CreateWindow({
-   Name = "XSTAR ENTRENCHED WW1",
-   LoadingTitle = "XSTAR Motion Engine",
-   LoadingSubtitle = "by Zukan",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "XStarData",
-      FileName = "Config"
-   },
-   KeySystem = true, 
-   KeySettings = {
-      Title = "XSTAR Security System",
-      Subtitle = "Please Enter Today's Key",
-      Note = "The key link has been automatically copied to your clipboard! Just paste it into your browser.",
-      FileName = "XStarKeyConfig", 
-      SaveKey = true, 
-      GrabKeyFromUrl = false,
-      -- Rayfield ipairs hatasını çözmek için fonksiyon yerine dinamik doğrulayıcı tabloya dönüştürüldü
-      Key = {"DinamikKontrol_XSTAR"}, 
-      Actions = {
-          OnEnter = function(enteredKey)
-              return VerifyKeyWithAPI(enteredKey)
-          end
-      }
-   }
-})
-
--- Eğer Rayfield'ın eski sürümlerinde Actions.OnEnter tetiklenmiyorsa alternatif güvenli key override mekanizması:
-if Window.KeySettings then
-    Window.KeySettings.Key = function(InputKey)
-        return VerifyKeyWithAPI(InputKey)
-    end
-end
-
--- Send a standard notification to ensure they know it is copied
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "XSTAR - Link Copied!",
-    Text = "Key link copied to clipboard. Paste it in your browser to get the key.",
-    Duration = 10
-})
-
--- =================================================================
--- MAIN CHEAT FUNCTIONS (Executes only if the key is correct)
--- =================================================================
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-
-local Toggles = {
-    Aimbot = true,
-    TeamCheck = true,
-    Prediction = true,
-    WallCheck = true,
-    Esp = true,
-    FovVisible = true,
-    StickyAim = true 
-}
-
-local Values = {
-    PredictionHizi = 0.165, 
-    Smoothing = 0.05,        
-    FovRadius = 180,
-    HedefKemik = "Head",
-    AimbotTusu = Enum.UserInputType.MouseButton2,
-    EspColor = Color3.fromRGB(255, 0, 0)
-}
-
-local Kilitli = false
-local MevcutHedef = nil
-
--- FOV CIRCLE
-local FovCircle = Drawing.new("Circle")
-FovCircle.Visible = Toggles.FovVisible
-FovCircle.Radius = Values.FovRadius
-FovCircle.Color = Color3.fromRGB(255, 255, 255)
-FovCircle.Thickness = 1
-FovCircle.Transparency = 0.7
-
--- ADVANCED TARGET FINDER (STICKY LOGIC)
-local function IsValid(part)
-    if not part or not part.Parent then return false end
-    local char = part.Parent
-    local hum = char:FindFirstChild("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
-    if Toggles.TeamCheck and Players:GetPlayerFromCharacter(char) and Players:GetPlayerFromCharacter(char).Team == LocalPlayer.Team then return false end
-    
-    if Toggles.WallCheck then
-        local RayParams = RaycastParams.new()
-        RayParams.FilterType = Enum.RaycastFilterType.Exclude
-        RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-        local Result = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, RayParams)
-        if Result and not Result.Instance:IsDescendantOf(char) then return false end
-    end
-    
-    return true
-end
-
-local function GetClosestTarget()
-    if Toggles.StickyAim and MevcutHedef and IsValid(MevcutHedef) then
-        local ScreenPos, OnScreen = Camera:WorldToViewportPoint(MevcutHedef.Position)
-        if OnScreen then return MevcutHedef end
     end
 
-    local MaxDist = Values.FovRadius
-    local Target = nil
-    local MousePos = UserInputService:GetMouseLocation()
+    local function GetClosestTarget()
+        if Toggles.StickyAim and MevcutHedef and IsValid(MevcutHedef) then
+            local ScreenPos, OnScreen = Camera:WorldToViewportPoint(MevcutHedef.Position)
+            if OnScreen then return MevcutHedef end
+        end
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            if Toggles.TeamCheck and player.Team == LocalPlayer.Team then continue end
-            local TargetPart = player.Character:FindFirstChild(Values.HedefKemik)
-            if TargetPart and IsValid(TargetPart) then
-                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
-                if OnScreen then
-                    local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
-                    if Distance < MaxDist then
-                        MaxDist = Distance
-                        Target = TargetPart
+        local MaxDist = Values.FovRadius
+        local Target = nil
+        local MousePos = UserInputService:GetMouseLocation()
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                if Toggles.TeamCheck and player.Team == LocalPlayer.Team then continue end
+                local TargetPart = player.Character:FindFirstChild(Values.HedefKemik)
+                if TargetPart and IsValid(TargetPart) then
+                    local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+                    if OnScreen then
+                        local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
+                        if Distance < MaxDist then
+                            MaxDist = Distance
+                            Target = TargetPart
+                        end
                     end
                 end
             end
         end
+        return Target
     end
-    return Target
+
+    local MainTab = Window:CreateTab("Aimbot (Rage)", 4483362458)
+    local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+
+    MainTab:CreateToggle({Name = "Master Aimbot", CurrentValue = true, Callback = function(Value) Toggles.Aimbot = Value end})
+    MainTab:CreateSlider({Name = "Smoothing", Range = {0, 1}, Increment = 0.01, Suffix = "Smooth", CurrentValue = 0.05, Callback = function(Value) Values.Smoothing = Value end})
+    MainTab:CreateToggle({Name = "Sticky Aim", CurrentValue = true, Callback = function(Value) Toggles.StickyAim = Value end})
+    MainTab:CreateSlider({Name = "Prediction Speed", Range = {0.1, 0.4}, Increment = 0.001, Suffix = "Lead", CurrentValue = 0.165, Callback = function(Value) Values.PredictionHizi = Value end})
+    MainTab:CreateSection("Filters")
+    MainTab:CreateToggle({Name = "Team Check", CurrentValue = true, Callback = function(Value) Toggles.TeamCheck = Value end})
+
+    VisualsTab:CreateToggle({
+       Name = "Enemy Red ESP",
+       CurrentValue = true,
+       Callback = function(Value) 
+           Toggles.Esp = Value 
+           if not Value then
+               for _, p in pairs(Players:GetPlayers()) do
+                   if p.Character and p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+               end
+           end
+       end,
+    })
+    VisualsTab:CreateSlider({Name = "FOV Size", Range = {50, 800}, Increment = 10, CurrentValue = 180, Callback = function(Value) Values.FovRadius = Value end})
+
+    UserInputService.InputBegan:Connect(function(input) if input.UserInputType == Values.AimbotTusu then Kilitli = true end end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Values.AimbotTusu then Kilitli = false; MevcutHedef = nil end end)
+
+    RunService.RenderStepped:Connect(function()
+        FovCircle.Position = UserInputService:GetMouseLocation()
+        FovCircle.Radius = Values.FovRadius
+        FovCircle.Visible = Toggles.FovVisible
+
+        if Kilitli and Toggles.Aimbot then
+            MevcutHedef = GetClosestTarget()
+            if MevcutHedef then
+                local RootPart = MevcutHedef.Parent:FindFirstChild("HumanoidRootPart")
+                local PredictPos = MevcutHedef.Position
+                if Toggles.Prediction and RootPart then
+                    local Mesafe = (Camera.CFrame.Position - MevcutHedef.Position).Magnitude
+                    local DinamikPred = Values.PredictionHizi + (Mesafe / 5000) 
+                    PredictPos = PredictPos + (RootPart.Velocity * DinamikPred)
+                end
+                local LookAt = CFrame.new(Camera.CFrame.Position, PredictPos)
+                if Values.Smoothing <= 0.01 then Camera.CFrame = LookAt else Camera.CFrame = Camera.CFrame:Lerp(LookAt, 1 - Values.Smoothing) end
+            end
+        end
+        
+        if Toggles.Esp then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    if Toggles.TeamCheck and p.Team == LocalPlayer.Team then
+                        if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+                        continue
+                    end
+                    local hl = p.Character:FindFirstChild("Highlight")
+                    if not hl then
+                        hl = Instance.new("Highlight", p.Character)
+                        hl.FillColor = Color3.fromRGB(255, 0, 0)
+                        hl.OutlineTransparency = 1
+                        hl.FillAlpha = 0.5
+                    end
+                end
+            end
+        end
+    end)
 end
 
--- INTERFACE TABS
-local MainTab = Window:CreateTab("Aimbot (Rage)", 4483362458)
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+-- =================================================================
+-- 3. STEP: PREMIUM RAYFIELD-STYLE LOGIN UI
+-- =================================================================
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("XStarGatekeeper") then CoreGui.XStarGatekeeper:Destroy() end
 
-MainTab:CreateToggle({
-   Name = "Master Aimbot",
-   CurrentValue = true,
-   Callback = function(Value) Toggles.Aimbot = Value end,
-})
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "XStarGatekeeper"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-MainTab:CreateSlider({
-   Name = "Smoothing (LOWER = HARDER LOCK)",
-   Range = {0, 1},
-   Increment = 0.01,
-   Suffix = "Smooth",
-   CurrentValue = 0.05,
-   Callback = function(Value) Values.Smoothing = Value end,
-})
+-- Ana Panel (Rayfield Koyu Antrasit Rengi)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 420, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -210, 0.4, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-MainTab:CreateToggle({
-   Name = "Sticky Aim (Lock to Target)",
-   CurrentValue = true,
-   Callback = function(Value) Toggles.StickyAim = Value end,
-})
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 9)
+local UIStroke = Instance.new("UIStroke", MainFrame)
+UIStroke.Color = Color3.fromRGB(70, 80, 140) -- Rayfield Mor/Mavi Çerçeve Rengi
+UIStroke.Thickness = 1.5
 
-MainTab:CreateSlider({
-   Name = "Prediction Speed",
-   Range = {0.1, 0.4},
-   Increment = 0.001,
-   Suffix = "Lead",
-   CurrentValue = 0.165,
-   Callback = function(Value) Values.PredictionHizi = Value end,
-})
+-- Başlık Çubuğu
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Text = "  XSTAR SECURITY SYSTEM"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BackgroundTransparency = 1
+Title.Parent = MainFrame
 
-MainTab:CreateSection("Filters")
+-- Sürüm Etiketi
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Size = UDim2.new(0, 100, 0, 45)
+Subtitle.Position = UDim2.new(1, -115, 0, 0)
+Subtitle.Text = "v2.4 (Dinamik)"
+Subtitle.TextColor3 = Color3.fromRGB(120, 130, 200)
+Subtitle.TextSize = 12
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.TextXAlignment = Enum.TextXAlignment.Right
+Subtitle.BackgroundTransparency = 1
+Subtitle.Parent = MainFrame
 
-MainTab:CreateToggle({
-   Name = "Team Check",
-   CurrentValue = true,
-   Callback = function(Value) Toggles.TeamCheck = Value end,
- })
+-- Çizgi Seperatör
+local Line = Instance.new("Frame")
+Line.Size = UDim2.new(1, 0, 0, 1)
+Line.Position = UDim2.new(0, 0, 0, 45)
+Line.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Line.BorderSizePixel = 0
+Line.Parent = MainFrame
 
--- VISUALS
-VisualsTab:CreateToggle({
-   Name = "Enemy Red ESP",
-   CurrentValue = true,
-   Callback = function(Value) 
-       Toggles.Esp = Value 
-       if not Value then
-           for _, p in pairs(Players:GetPlayers()) do
-               if p.Character and p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
-           end
-       end
-   end,
-})
+-- Açıklama Metni
+local InfoText = Instance.new("TextLabel")
+InfoText.Size = UDim2.new(1, -40, 0, 40)
+InfoText.Position = UDim2.new(0, 20, 0, 55)
+InfoText.Text = "To access the cheat, you must complete the Linkvertise checkpoints. The link has been copied automatically, or use the button below."
+InfoText.TextColor3 = Color3.fromRGB(160, 165, 175)
+InfoText.TextSize = 13
+InfoText.Font = Enum.Font.Gotham
+InfoText.TextWrapped = true
+InfoText.BackgroundTransparency = 1
+InfoText.Parent = MainFrame
 
-VisualsTab:CreateSlider({
-   Name = "FOV Size",
-   Range = {50, 800},
-   Increment = 10,
-   CurrentValue = 180,
-   Callback = function(Value) Values.FovRadius = Value end,
-})
+-- Key Giriş Kutusu (Premium Input)
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -40, 0, 40)
+TextBox.Position = UDim2.new(0, 20, 0, 115)
+TextBox.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+TextBox.Text = ""
+TextBox.PlaceholderText = "Enter today's key here..."
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderColor3 = Color3.fromRGB(90, 95, 105)
+TextBox.TextSize = 13
+TextBox.Font = Enum.Font.Gotham
+TextBox.Parent = MainFrame
+Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 6)
+local BoxStroke = Instance.new("UIStroke", TextBox)
+BoxStroke.Color = Color3.fromRGB(40, 40, 45)
 
--- MAIN LOOP
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Values.AimbotTusu then Kilitli = true end
-end)
+-- LİNKİ KOPYALAMA BUTONU (YENİ!)
+local CopyBtn = Instance.new("TextButton")
+CopyBtn.Size = UDim2.new(0, 120, 0, 40)
+CopyBtn.Position = UDim2.new(0, 20, 0, 175)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+CopyBtn.Text = "Copy Key Link"
+CopyBtn.TextColor3 = Color3.fromRGB(200, 200, 205)
+CopyBtn.Font = Enum.Font.GothamBold
+CopyBtn.TextSize = 13
+CopyBtn.Parent = MainFrame
+Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Values.AimbotTusu then 
-        Kilitli = false 
-        MevcutHedef = nil 
+-- KONTROL BUTONU (CHECK KEY)
+local VerifyBtn = Instance.new("TextButton")
+VerifyBtn.Size = UDim2.new(1, -170, 0, 40)
+VerifyBtn.Position = UDim2.new(0, 150, 0, 175)
+VerifyBtn.BackgroundColor3 = Color3.fromRGB(75, 85, 160) -- Rayfield Buton Rengi
+VerifyBtn.Text = "Check Key"
+VerifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VerifyBtn.Font = Enum.Font.GothamBold
+VerifyBtn.TextSize = 13
+VerifyBtn.Parent = MainFrame
+Instance.new("UICorner", VerifyBtn).CornerRadius = UDim.new(0, 6)
+
+-- BUTON ETKİLEŞİMLERİ
+
+-- Link Kopyalama Butonu İşlevi
+CopyBtn.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(LinkvertiseLinki)
+        CopyBtn.Text = "Copied!"
+        CopyBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        task.wait(1.5)
+        CopyBtn.Text = "Copy Key Link"
+        CopyBtn.TextColor3 = Color3.fromRGB(200, 200, 205)
     end
 end)
 
-RunService.RenderStepped:Connect(function()
-    FovCircle.Position = UserInputService:GetMouseLocation()
-    FovCircle.Radius = Values.FovRadius
-    FovCircle.Visible = Toggles.FovVisible
-
-    if Kilitli and Toggles.Aimbot then
-        MevcutHedef = GetClosestTarget()
-        
-        if MevcutHedef then
-            local RootPart = MevcutHedef.Parent:FindFirstChild("HumanoidRootPart")
-            local PredictPos = MevcutHedef.Position
-            
-            if Toggles.Prediction and RootPart then
-                local Mesafe = (Camera.CFrame.Position - MevcutHedef.Position).Magnitude
-                local DinamikPred = Values.PredictionHizi + (Mesafe / 5000) 
-                PredictPos = PredictPos + (RootPart.Velocity * DinamikPred)
-            end
-
-            local LookAt = CFrame.new(Camera.CFrame.Position, PredictPos)
-            
-            if Values.Smoothing <= 0.01 then
-                Camera.CFrame = LookAt
-            else
-                Camera.CFrame = Camera.CFrame:Lerp(LookAt, 1 - Values.Smoothing)
-            end
-        end
-    end
+-- Anahtar Kontrol Butonu İşlevi
+VerifyBtn.MouseButton1Click:Connect(function()
+    local entered = TextBox.Text:gsub("%s+", "") -- Boşlukları kırp
+    if entered == "" then return end
     
-    if Toggles.Esp then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                if Toggles.TeamCheck and p.Team == LocalPlayer.Team then
-                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
-                    continue
-                end
-
-                local hl = p.Character:FindFirstChild("Highlight")
-                if not hl then
-                    hl = Instance.new("Highlight", p.Character)
-                    hl.FillColor = Color3.fromRGB(255, 0, 0)
-                    hl.OutlineTransparency = 1
-                    hl.FillAlpha = 0.5
-                end
-            end
-        end
+    VerifyBtn.Text = "Checking..."
+    VerifyBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 100)
+    
+    local checkSuccess, checkResponse = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(API_URL .. "/check-key?key=" .. entered))
+    end)
+    
+    if checkSuccess and checkResponse and checkResponse.success then
+        -- BAŞARILI: Giriş Arayüzünü Sil ve Rayfield'ı Yükle
+        ScreenGui:Destroy()
+        LoadMainCheat()
+    else
+        -- BAŞARISIZ: Hata Durumu Animasyonu
+        VerifyBtn.Text = "Invalid Key!"
+        VerifyBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        task.wait(2)
+        VerifyBtn.Text = "Check Key"
+        VerifyBtn.BackgroundColor3 = Color3.fromRGB(75, 85, 160)
     end
 end)
-
-Rayfield:Notify({
-   Title = "XSTAR ENTRENCHED",
-   Content = "Hard Lock & Prediction Active!",
-   Duration = 5,
-   Image = 4483362458,
-})
