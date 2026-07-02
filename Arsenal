@@ -1,0 +1,200 @@
+-- =================================================================
+-- XSTAR - ARSENAL PREMIUM PVP CRUSHER (Original Gatekeeper Design)
+-- =================================================================
+
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local API_URL = "https://api.xstar.site" -- Senin Vercel domain adresin
+
+-- 1. STEP: BACKEND ÜZERİNDEN GÜNCEL REKLAM LİNKİNİ ÇEKME
+local LinkvertiseLinki = "https://linkvertise.com" 
+local success, response = pcall(function()
+    return HttpService:JSONDecode(game:HttpGet(API_URL .. "/get-link"))
+end)
+if success and response and response.link then
+    LinkvertiseLinki = response.link
+end
+
+-- İlk çalıştırmada linki panoya otomatik kopyala
+if setclipboard then setclipboard(LinkvertiseLinki) end
+
+-- 2. STEP: ANA HİLE FONKSİYONU
+local function LoadMainCheat()
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    local Window = Rayfield:CreateWindow({
+       Name = "XSTAR - Arsenal PvP Crusher",
+       LoadingTitle = "XSTAR Motion Engine v4.0",
+       LoadingSubtitle = "by Zukan (PvP Edition)",
+       ConfigurationSaving = { Enabled = true, FolderName = "XStarArsenalData", FileName = "PvPConfig" },
+       KeySystem = false 
+    })
+
+    -- SERVİSLER VE CONFIG
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = workspace.CurrentCamera
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+
+    local Config = {
+        Aimbot = false, SilentAim = false, TeamCheck = true, WallCheck = false,
+        AimPart = "Head", FovRadius = 150, FovVisible = true, Smoothing = 0.05,
+        NoRecoil = false, NoSpread = false, InfiniteAmmo = false, RapidFire = false, EspBox = false
+    }
+
+    -- TABS
+    local CombatTab = Window:CreateTab("Combat (Aim)", 4483362458)
+    local GunTab = Window:CreateTab("Gun Mods", 4483362458)
+    local VisualsTab = Window:CreateTab("Visuals (ESP)", 4483362458)
+
+    CombatTab:CreateToggle({Name = "Camera Aimbot", CurrentValue = false, Callback = function(v) Config.Aimbot = v end})
+    CombatTab:CreateToggle({Name = "Silent Aim", CurrentValue = false, Callback = function(v) Config.SilentAim = v end})
+    CombatTab:CreateSlider({Name = "Smoothing", Range = {0, 1}, Increment = 0.01, CurrentValue = 0.05, Callback = function(v) Config.Smoothing = v end})
+    CombatTab:CreateSlider({Name = "FOV Radius", Range = {50, 500}, Increment = 5, CurrentValue = 150, Callback = function(v) Config.FovRadius = v end})
+    
+    GunTab:CreateToggle({Name = "No Recoil", CurrentValue = false, Callback = function(v) Config.NoRecoil = v end})
+    GunTab:CreateToggle({Name = "Infinite Ammo", CurrentValue = false, Callback = function(v) Config.InfiniteAmmo = v end})
+
+    VisualsTab:CreateToggle({Name = "Box ESP (Red)", CurrentValue = false, Callback = function(v) Config.EspBox = v end})
+
+    -- LOOP (Gelişmiş Aimbot & ESP)
+    local FovCircle = Drawing.new("Circle")
+    FovCircle.Thickness = 1
+    FovCircle.Color = Color3.fromRGB(255, 0, 0)
+    FovCircle.Transparency = 0.6
+
+    RunService.RenderStepped:Connect(function()
+        FovCircle.Position = UserInputService:GetMouseLocation()
+        FovCircle.Radius = Config.FovRadius
+        FovCircle.Visible = Config.FovVisible
+
+        if Config.EspBox then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    if Config.TeamCheck and p.Team == LocalPlayer.Team then continue end
+                    if not p.Character:FindFirstChild("Highlight") then
+                        local hl = Instance.new("Highlight", p.Character)
+                        hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- 3. STEP: PREMIUM RAYFIELD-STYLE LOGIN UI (ORİJİNAL)
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("XStarGatekeeper") then CoreGui.XStarGatekeeper:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "XStarGatekeeper"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 420, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -210, 0.4, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 9)
+
+local UIStroke = Instance.new("UIStroke", MainFrame)
+UIStroke.Color = Color3.fromRGB(70, 80, 140)
+UIStroke.Thickness = 1.5
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Text = "   XSTAR SECURITY SYSTEM"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BackgroundTransparency = 1
+Title.Parent = MainFrame
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Size = UDim2.new(0, 100, 0, 45)
+Subtitle.Position = UDim2.new(1, -115, 0, 0)
+Subtitle.Text = "v2.4 (Dinamik)"
+Subtitle.TextColor3 = Color3.fromRGB(120, 130, 200)
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.BackgroundTransparency = 1
+Subtitle.Parent = MainFrame
+
+local Line = Instance.new("Frame")
+Line.Size = UDim2.new(1, 0, 0, 1)
+Line.Position = UDim2.new(0, 0, 0, 45)
+Line.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Line.Parent = MainFrame
+
+local InfoText = Instance.new("TextLabel")
+InfoText.Size = UDim2.new(1, -40, 0, 40)
+InfoText.Position = UDim2.new(0, 20, 0, 55)
+InfoText.Text = "To access the cheat, you must complete the Linkvertise checkpoints. The link has been copied automatically, or use the button below."
+InfoText.TextColor3 = Color3.fromRGB(160, 165, 175)
+InfoText.Font = Enum.Font.Gotham
+InfoText.TextWrapped = true
+InfoText.BackgroundTransparency = 1
+InfoText.Parent = MainFrame
+
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -40, 0, 40)
+TextBox.Position = UDim2.new(0, 20, 0, 115)
+TextBox.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+TextBox.PlaceholderText = "Enter today's key here..."
+TextBox.Text = ""
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.Font = Enum.Font.Gotham
+TextBox.Parent = MainFrame
+Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", TextBox).Color = Color3.fromRGB(40, 40, 45)
+
+local CopyBtn = Instance.new("TextButton")
+CopyBtn.Size = UDim2.new(0, 120, 0, 40)
+CopyBtn.Position = UDim2.new(0, 20, 0, 175)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+CopyBtn.Text = "Copy Key Link"
+CopyBtn.TextColor3 = Color3.fromRGB(200, 200, 205)
+CopyBtn.Font = Enum.Font.GothamBold
+CopyBtn.Parent = MainFrame
+Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
+
+local VerifyBtn = Instance.new("TextButton")
+VerifyBtn.Size = UDim2.new(1, -170, 0, 40)
+VerifyBtn.Position = UDim2.new(0, 150, 0, 175)
+VerifyBtn.BackgroundColor3 = Color3.fromRGB(75, 85, 160)
+VerifyBtn.Text = "Check Key"
+VerifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VerifyBtn.Font = Enum.Font.GothamBold
+VerifyBtn.Parent = MainFrame
+Instance.new("UICorner", VerifyBtn).CornerRadius = UDim.new(0, 6)
+
+-- ETKİLEŞİMLER
+CopyBtn.MouseButton1Click:Connect(function()
+    setclipboard(LinkvertiseLinki)
+    CopyBtn.Text = "Copied!"
+    task.wait(1.5)
+    CopyBtn.Text = "Copy Key Link"
+end)
+
+VerifyBtn.MouseButton1Click:Connect(function()
+    local entered = TextBox.Text:gsub("%s+", "")
+    VerifyBtn.Text = "Checking..."
+    
+    local success, res = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(API_URL .. "/check-key?key=" .. entered))
+    end)
+    
+    if success and res and res.success then
+        ScreenGui:Destroy()
+        LoadMainCheat()
+    else
+        VerifyBtn.Text = "Invalid Key!"
+        VerifyBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        task.wait(2)
+        VerifyBtn.Text = "Check Key"
+        VerifyBtn.BackgroundColor3 = Color3.fromRGB(75, 85, 160)
+    end
+end)
