@@ -1,1 +1,12 @@
-local HttpService=game:GetService("HttpService")local placeId=game.PlaceId;local s,scripts=pcall(function()return HttpService:JSONDecode(game:HttpGet("https://api.xstar.site/get-scripts?placeId="..placeId))end)if s then for _,code in pairs(scripts)do loadstring(code)()end else print("Script yüklenemedi.")end
+local HttpService = game:GetService("HttpService")
+local placeId = game.PlaceId
+local s, scripts = pcall(function()
+    return HttpService:JSONDecode(game:HttpGet("https://xstarapi.vercel.app/get-scripts?placeId=" .. placeId))
+end)
+if s then
+    for _, code in pairs(scripts) do
+        loadstring(code)()
+    end
+else
+    print("Script yüklenemedi.")
+end
